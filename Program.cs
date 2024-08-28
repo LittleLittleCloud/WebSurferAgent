@@ -1,7 +1,7 @@
 ﻿using AutoGen.Core;
 using Azure.AI.OpenAI;
 using Microsoft.Playwright;
-using webSurfurAgent;
+using webSurferAgent;
 
 using var playwright = await Playwright.CreateAsync();
 await using var browser = await playwright.Chromium.LaunchAsync(new()

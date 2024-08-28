@@ -12,7 +12,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace webSurfurAgent;
+namespace webSurferAgent;
 
 public partial class WebSurferAgent : IAgent
 {
