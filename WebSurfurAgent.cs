@@ -14,21 +14,21 @@ using System.Threading.Tasks;
 
 namespace webSurfurAgent;
 
-public partial class WebSurfurAgent : IAgent
+public partial class WebSurferAgent : IAgent
 {
     private readonly IAgent _agent;
     private readonly IBrowser _browser;
     private readonly IPage _page;
     private readonly int _maxSteps = 10;
 
-    internal WebSurfurAgent(IAgent agent, IBrowser browser, int maxSteps = 10)
+    internal WebSurferAgent(IAgent agent, IBrowser browser, int maxSteps = 10)
     {
         _agent = agent;
         _browser = browser;
         _page = browser.NewPageAsync().Result;
     }
 
-    public WebSurfurAgent(ChatClient openaiClient, IBrowser browser, string name = "web-surfur", int maxSteps = 10)
+    public WebSurferAgent(ChatClient openaiClient, IBrowser browser, string name = "web-surfur", int maxSteps = 10)
     {
         var functionCallMiddleware = new FunctionCallMiddleware(
             functions: [
