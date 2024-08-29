@@ -16,6 +16,6 @@ var aoaiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? thro
 var openaiClient = new AzureOpenAIClient(new Uri(aoaiEndpoint), new Azure.AzureKeyCredential(aoaiKey));
 var webSurferAgent = new WebSurferAgent(openaiClient.GetChatClient("gpt-4o"), browser);
 var task = """
-    Can I disable parallel function call in gpt-4o? 
+    How many issues does AutoGen.Net v0.1.0 milestone have?
     """;
 await webSurferAgent.SendAsync(task);

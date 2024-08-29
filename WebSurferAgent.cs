@@ -1,16 +1,10 @@
 ﻿using AutoGen.Core;
 using AutoGen.OpenAI;
 using AutoGen.OpenAI.Extension;
-using Azure.AI.OpenAI;
 using Microsoft.Playwright;
-using OpenAI;
 using OpenAI.Chat;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace webSurferAgent;
 
@@ -20,19 +14,24 @@ public partial class WebSurferAgent : IAgent
     private readonly IBrowser _browser;
     private readonly IPage _page;
     private readonly int _maxSteps = 10;
+    private InteractiveRectangles? _interactiveElements = null;
 
     internal WebSurferAgent(IAgent agent, IBrowser browser, int maxSteps = 10)
     {
         _agent = agent;
         _browser = browser;
+
+        // to google
         _page = browser.NewPageAsync().Result;
+        _page.GotoAsync("https://www.google.com").Wait();
+        DrawAllInteractiveElementsAsync().Wait();
     }
 
     public WebSurferAgent(ChatClient openaiClient, IBrowser browser, string name = "web-surfur", int maxSteps = 10)
     {
         var functionCallMiddleware = new FunctionCallMiddleware(
             functions: [
-                this.VisitUrlFunctionContract,
+                //this.VisitUrlFunctionContract,
                 this.TypeFunctionContract,
                 this.HistoryBackFunctionContract,
                 this.ClickFunctionContract,
@@ -43,7 +42,7 @@ public partial class WebSurferAgent : IAgent
                 ],
             functionMap: new Dictionary<string, Func<string, Task<string>>>
             {
-                [nameof(VisitUrl)] = this.VisitUrlWrapper,
+                //[nameof(VisitUrl)] = this.VisitUrlWrapper,
                 [nameof(HistoryBack)] = this.HistoryBackWrapper,
                 [nameof(Click)] = this.ClickWrapper,
                 [nameof(Type)] = this.TypeWrapper,
@@ -62,7 +61,10 @@ public partial class WebSurferAgent : IAgent
 
 
         _browser = browser;
+        // to google
         _page = browser.NewPageAsync().Result;
+        _page.GotoAsync("https://www.google.com").Wait();
+        DrawAllInteractiveElementsAsync().Wait();
     }
 
     public string Name => _agent.Name;
@@ -100,8 +102,26 @@ public partial class WebSurferAgent : IAgent
             var image = File.ReadAllBytes("screenshot.png");
             var imageMessage = new ImageMessage(Role.User, BinaryData.FromBytes(image, mediaType: "image/png"));
             chatHistory.Add(imageMessage);
+            var availableInteractionStringBuilder = new StringBuilder();
+            availableInteractionStringBuilder.AppendLine("Available interactive elements:");
+            foreach (var rect in _interactiveElements?.Rects ?? Array.Empty<InteractiveRectangle>())
+            {
+                if (string.IsNullOrEmpty(rect.AriaName))
+                {
+                    continue;
+                }
 
-            var reply = await _agent.GenerateReplyAsync(chatHistory, options, cancellationToken);
+                availableInteractionStringBuilder.AppendLine($"id: {rect.ElementId}, tag: {rect.TagName}, role: {rect.Role}, aria-name: {rect.AriaName}");
+            }
+
+            var availableInteractionMessage = new TextMessage(Role.User, availableInteractionStringBuilder.ToString());
+
+            var chatHistoryWithAvailableInteractions = new List<IMessage>(chatHistory)
+            {
+                availableInteractionMessage
+            };
+
+            var reply = await _agent.GenerateReplyAsync(chatHistoryWithAvailableInteractions, options, cancellationToken);
             if (reply is ToolCallAggregateMessage toolCallMessage)
             {
                 chatHistory.Add(reply);
@@ -122,14 +142,14 @@ public partial class WebSurferAgent : IAgent
 
     // browser action
 
-    [Function]
-    public async Task<string> VisitUrl(string url)
-    {
-        await _page.GotoAsync(url);
-        await DrawAllInteractiveElementsAsync();
+    //[Function]
+    //public async Task<string> VisitUrl(string url)
+    //{
+    //    await _page.GotoAsync(url);
+    //    await DrawAllInteractiveElementsAsync();
 
-        return await _page.TitleAsync();
-    }
+    //    return await _page.TitleAsync();
+    //}
 
     [Function]
     public async Task<string> HistoryBack()
@@ -146,7 +166,7 @@ public partial class WebSurferAgent : IAgent
     public async Task<string> Enter()
     {
 
-       await _page.Keyboard.PressAsync("Enter");
+        await _page.Keyboard.PressAsync("Enter");
         await DrawAllInteractiveElementsAsync();
         return "Enter key pressed";
     }
@@ -156,22 +176,9 @@ public partial class WebSurferAgent : IAgent
     /// </summary>
     /// <param name="id">the id of the interactive element, it always located at the left bottom of the element</param>
     [Function]
-    public async Task<string> Click(int id)
+    public async Task<string> Click(string id)
     {
-        var interactiveElements = await _page.EvaluateAsync("MultimodalWebSurfer.getInteractiveRects();");
-        var str = JsonSerializer.Serialize(interactiveElements);
-        var interactiveRects = JsonSerializer.Deserialize<InteractiveRectangles>(str) ?? throw new Exception("interactiveRects is null");
-        //var interactiveElements = await _page.EvaluateAsync<InteractiveRectangles>("MultimodalWebSurfer.getInteractiveRects();");
-
-
-        //Console.WriteLine(JsonSerializer.Serialize(interactiveElements, new JsonSerializerOptions { WriteIndented = true }));
-        var interactiveElement = interactiveRects.Rects.SelectMany(r => r.Rects).FirstOrDefault(e => e.InteractiveId == id);
-
-        // print all text content
-        foreach (var rect in interactiveRects.Rects.SelectMany(r => r.Rects))
-        {
-            Console.WriteLine(rect.Content);
-        }
+        var interactiveElement = _interactiveElements?.Rects.FirstOrDefault(e => e.ElementId == id);
 
         if (interactiveElement == null)
         {
@@ -188,7 +195,7 @@ public partial class WebSurferAgent : IAgent
 
             return $"Clicked on element with id {id}";
         }
-        catch(PlaywrightException ex) when (ex.Message.Contains("Element is an <input>, <textarea> or [contenteditable] element"))
+        catch (PlaywrightException ex) when (ex.Message.Contains("Element is an <input>, <textarea> or [contenteditable] element"))
         {
             return $"Element with id {id} is not clickable";
         }
@@ -221,12 +228,9 @@ public partial class WebSurferAgent : IAgent
     }
 
     [Function]
-    public async Task<string> Type(int id, string text)
+    public async Task<string> Type(string id, string text)
     {
-        var interactiveElements = await _page.EvaluateAsync("MultimodalWebSurfer.getInteractiveRects();");
-        var str = JsonSerializer.Serialize(interactiveElements);
-        var interactiveRects = JsonSerializer.Deserialize<InteractiveRectangles>(str) ?? throw new Exception("interactiveRects is null");
-        var interactiveElement = interactiveRects.Rects.SelectMany(r => r.Rects).FirstOrDefault(e => e.InteractiveId == id);
+        var interactiveElement = _interactiveElements!.Rects.FirstOrDefault(e => e.ElementId == id);
 
         if (interactiveElement == null)
         {
@@ -253,7 +257,7 @@ public partial class WebSurferAgent : IAgent
     public async Task<string> PageUp()
     {
         await _page.Keyboard.PressAsync("PageUp");
-        await DrawAllInteractiveElementsAsync();
+        //await DrawAllInteractiveElementsAsync();
         return "PageUp";
     }
 
@@ -261,7 +265,7 @@ public partial class WebSurferAgent : IAgent
     public async Task<string> PageDown()
     {
         await _page.Keyboard.PressAsync("PageDown");
-        await DrawAllInteractiveElementsAsync();
+        //await DrawAllInteractiveElementsAsync();
         return "PageDown";
     }
 
@@ -279,6 +283,20 @@ public partial class WebSurferAgent : IAgent
         var scriptPath = "page_script.js";
         var script = File.ReadAllText(scriptPath);
         await _page.EvaluateAsync(script);
-        await _page.EvaluateAsync("MultimodalWebSurfer.drawVisibleInteractiveRects();");
+
+        //var initialize_script = "initialize_script.js";
+        //var initializeScript = File.ReadAllText(initialize_script);
+        //await _page.EvaluateAsync(initializeScript);
+        await _page.WaitForLoadStateAsync();
+
+        var interactiveElements = await _page.EvaluateAsync("MultimodalWebSurfer.getInteractiveRects();");
+        var str = JsonSerializer.Serialize(interactiveElements);
+        _interactiveElements = JsonSerializer.Deserialize<InteractiveRectangles>(str) ?? throw new Exception("interactiveRects is null");
+
+        // print all text content
+        foreach (var rect in _interactiveElements.Rects)
+        {
+            Console.WriteLine($"id: {rect.ElementId}, tag: {rect.TagName}, role: {rect.Role}, aria-name: {rect.AriaName}");
+        }
     }
 }

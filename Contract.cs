@@ -40,7 +40,7 @@ public class Rectangle : Element
     public double Left { get; set; }
 
     [JsonPropertyName("element_id")]
-    public string ElementId { get; set; } = null!;
+    public string ElementId { get; set; }
 
     [JsonPropertyName("interactive_id")]
     public int InteractiveId { get; set; }
@@ -62,6 +62,10 @@ public class InteractiveRectangle : Element
 
     [JsonPropertyName("v-scrollable")]
     public bool VScrollable { get; set; }
+
+    [JsonPropertyName("element_id")]
+    public string ElementId { get; set; }
+
 
     [JsonPropertyName("rects")]
     public Rectangle[] Rects { get; set; } = Array.Empty<Rectangle>();

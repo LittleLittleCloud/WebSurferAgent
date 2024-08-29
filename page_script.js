@@ -83,7 +83,14 @@ var MultimodalWebSurfer = MultimodalWebSurfer || (function() {
               elements[i].setAttribute("__elementId", "" + (nextLabel++));
           }
       }
-  };
+    };
+
+    let setBoundaryAndPaddingToElements = function (elements)
+    {
+        for (let i = 0; i < elements.length; i++) {
+            elements[i].style.margin = "10px";
+        }
+    }
 
   let isTopmost = function(element, x, y) {
      let hit = document.elementFromPoint(x, y);
@@ -187,10 +194,12 @@ var MultimodalWebSurfer = MultimodalWebSurfer || (function() {
       }
   };
 
-  let getInteractiveRects = function() {
-      labelElements(getInteractiveElements());
-      let interactive_id = 0;
-      let elements = document.querySelectorAll("[__elementId]");
+    let getInteractiveRects = function () {
+        let elements = getInteractiveElements();
+        //setBoundaryAndPaddingToElements(elements);
+        labelElements(elements);
+      var interactive_id = 0;
+      elements = document.querySelectorAll("[__elementId]");
       let results = {};
       results["rects"] = [];
       for (let i=0; i<elements.length; i++) {
@@ -204,7 +213,8 @@ var MultimodalWebSurfer = MultimodalWebSurfer || (function() {
          "tag_name": ariaRole[1],
 	     "role": ariaRole[0],
 	     "aria-name": ariaName,
-	     "v-scrollable": vScrollable,
+            "v-scrollable": vScrollable,
+         "element_id": key,
 	     "rects": []
 	    };
 
@@ -213,15 +223,34 @@ var MultimodalWebSurfer = MultimodalWebSurfer || (function() {
              let y = rect.top + rect.height/2;
              if (isTopmost(elements[i], x, y)) {
                  rects = JSON.parse(JSON.stringify(rect));
-                 rects["interactive_id"] = interactive_id++;
+                 rects["interactive_id"] = interactive_id;
                  rects["content"] = trimmedInnerText(elements[i]);
                  rects["element_id"] = key;
                  record["rects"].push(rects);
+
+                 interactive_id++;
              }
          }
 
           if (record["rects"].length > 0) {
-             results["rects"].push(record);
+              results["rects"].push(record);
+              // add label
+              let label = document.createElement("span");
+              //label.style.position = "absolute";
+              //label.style.top = "0px";
+              //label.style.left = "0px";
+              //label.style.zIndex = "100000";
+              label.style.pointerEvents = "none";
+              label.style.backgroundColor = "red";
+              label.style.color = "white";
+              //label.style.padding = "5px";
+              label.style.fontSize = "16px";
+              label.innerText = key;
+
+              elements[i].appendChild(label);
+
+              elements[i].style.border = "2px solid red";
+              elements[i].style.padding = "20px";
          }
       }
 
@@ -392,52 +421,82 @@ var MultimodalWebSurfer = MultimodalWebSurfer || (function() {
        return results;
     };	
 
-    let drawVisibleInteractiveRects = function () {
+    let drawVisibleInteractiveRects = async function () {
         // remove the previous canvas
-        let previousCanvas = document.querySelector("canvas");
-        if (previousCanvas) {
-            previousCanvas.remove();
-            }
-        addLabelAndBoundaryToInteractiveRectsDom();
+
+        //addLabelAndBoundaryToInteractiveRectsDom();
+        // wait for the layout to be updated
+        // wait for dom to be updated
+        //let previousCanvas = document.querySelector("canvas");
+        //if (previousCanvas) {
+        //    previousCanvas.remove();
+        //}
+
         let rects = getInteractiveRects();
         let visualViewport = getVisualViewport();
-        let canvas = document.createElement("canvas");
-        canvas.width = visualViewport.clientWidth;
-        canvas.height = visualViewport.clientHeight;
-        canvas.style.position = "absolute";
-        canvas.style.top = "0px";
-        canvas.style.left = "0px";
-        canvas.style.zIndex = "100000";
-        canvas.style.pointerEvents = "none";
-        document.body.appendChild(canvas);
-        let ctx = canvas.getContext("2d");
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.strokeStyle = "red";
-        ctx.lineWidth = 2;
-        for (let i=0; i<rects["rects"].length; i++) {
-            let record = rects["rects"][i];
-            for (let j=0; j<record["rects"].length; j++) {
-                let rect = record["rects"][j];
-                ctx.strokeRect(rect.left - visualViewport.pageLeft, rect.top - visualViewport.pageTop, rect.width, rect.height);
+        //let canvas = document.createElement("canvas");
+        await addLabelAndBoundaryToInteractiveRectsDom();
+        //canvas.width = visualViewport.clientWidth;
+        //canvas.height = visualViewport.clientHeight;
+        //canvas.style.position = "absolute";
+        //canvas.style.top = "0px";
+        //canvas.style.left = "0px";
+        //canvas.style.zIndex = "100000";
+        //canvas.style.pointerEvents = "none";
+        //document.body.appendChild(canvas);
+        //let ctx = canvas.getContext("2d");
+        //ctx.clearRect(0, 0, canvas.width, canvas.height);
+        //ctx.strokeStyle = "red";
+        //ctx.lineWidth = 2;
+        //for (let i = 0; i < rects["rects"].length; i++) {
+        //    let record = rects["rects"][i];
+        //    for (let j = 0; j < record["rects"].length; j++) {
+        //        let rect = record["rects"][j];
+        //        ctx.strokeRect(rect.left - visualViewport.pageLeft, rect.top - visualViewport.pageTop, rect.width, rect.height);
 
-                // Draw the label: id
-                ctx.font = "16px Arial";
-                ctx.fillStyle = "red";
-                ctx.fillText(rect["interactive_id"], rect.left - visualViewport.pageLeft, rect.top - visualViewport.pageTop + rect.height + 20);
-            }
-        }
+        //        // Draw the label: id
+        //        ctx.font = "16px Arial";
+        //        ctx.fillStyle = "red";
+        //        ctx.fillText(rect["interactive_id"], rect.left - visualViewport.pageLeft, rect.top - visualViewport.pageTop + rect.height + 20);
+        //    }
+        //}
     }
 
-    let addLabelAndBoundaryToInteractiveRectsDom = function () {
+    let addLabelAndBoundaryToInteractiveRectsDom = async function () {
         // add paddings to the root element
 
         let root = document.documentElement;
-        let padding = 0;
+        let padding = 20;
         root.style.padding = padding + "px";
 
         // add margin to the body element
         let body = document.body;
         body.style.padding = padding + "px";
+
+        // add bottom padding to all the elements
+        let elements = document.querySelectorAll("[__elementId]");
+        for (let i = 0; i < elements.length; i++) {
+            elements[i].style.padding = 20 + "px";
+
+
+            // add label
+            let label = document.createElement("div");
+            label.style.position = "absolute";
+            label.style.top = "0px";
+            label.style.left = "0px";
+            label.style.zIndex = "100000";
+            label.style.pointerEvents = "none";
+            label.style.backgroundColor = "red";
+            label.style.color = "white";
+            label.style.padding = "5px";
+            label.style.fontSize = "16px";
+            label.innerText = elements[i].getAttribute("__elementId");
+            elements[i].appendChild(label);
+
+
+            // red border
+            elements[i].style.border = "2px solid red";
+        }
     }
 
    return {
