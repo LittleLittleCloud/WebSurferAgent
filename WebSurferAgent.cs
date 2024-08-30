@@ -111,9 +111,10 @@ public partial class WebSurferAgent : IAgent
                     continue;
                 }
 
-                availableInteractionStringBuilder.AppendLine($"id: {rect.Label}, aria-name: {rect.AriaLabel}");
+                availableInteractionStringBuilder.AppendLine($"id: {rect.Label}, aria-name: {rect.AriaLabel}, role: {rect.Role}");
             }
 
+            Console.WriteLine(availableInteractionStringBuilder.ToString());
             var availableInteractionMessage = new TextMessage(Role.User, availableInteractionStringBuilder.ToString());
 
             var chatHistoryWithAvailableInteractions = new List<IMessage>(chatHistory)

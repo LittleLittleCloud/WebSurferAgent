@@ -21,6 +21,12 @@ public class TagMetadata : Element
 
     [JsonPropertyName("label")]
     public string Label { get; set; }
+
+    /// <summary>
+    /// text | clickable | input
+    /// </summary>
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = null!;
 }
 
 public class TagMetaDatas : Element
