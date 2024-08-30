@@ -14,7 +14,7 @@ public partial class WebSurferAgent : IAgent
     private readonly IBrowser _browser;
     private readonly IPage _page;
     private readonly int _maxSteps = 10;
-    private InteractiveRectangles? _interactiveElements = null;
+    private TagMetaDatas? _interactiveElements = null;
 
     internal WebSurferAgent(IAgent agent, IBrowser browser, int maxSteps = 10)
     {
@@ -104,14 +104,14 @@ public partial class WebSurferAgent : IAgent
             chatHistory.Add(imageMessage);
             var availableInteractionStringBuilder = new StringBuilder();
             availableInteractionStringBuilder.AppendLine("Available interactive elements:");
-            foreach (var rect in _interactiveElements?.Rects ?? Array.Empty<InteractiveRectangle>())
+            foreach (var rect in _interactiveElements?.Data ?? Array.Empty<TagMetadata>())
             {
-                if (string.IsNullOrEmpty(rect.AriaName))
+                if (string.IsNullOrEmpty(rect.AriaLabel))
                 {
                     continue;
                 }
 
-                availableInteractionStringBuilder.AppendLine($"id: {rect.ElementId}, tag: {rect.TagName}, role: {rect.Role}, aria-name: {rect.AriaName}");
+                availableInteractionStringBuilder.AppendLine($"id: {rect.Label}, aria-name: {rect.AriaLabel}");
             }
 
             var availableInteractionMessage = new TextMessage(Role.User, availableInteractionStringBuilder.ToString());
@@ -172,13 +172,13 @@ public partial class WebSurferAgent : IAgent
     }
 
     /// <summary>
-    /// Click on an interactive element with the given id. The interactive elements are marked in red rectangles.
+    /// Click on an interactive element with the given id. The interactive elements are marked with red label and starts with @. e.g. @1
     /// </summary>
-    /// <param name="id">the id of the interactive element, it always located at the left bottom of the element</param>
+    /// <param name="id">the id of the interactive element. It is marked with @.</param>
     [Function]
     public async Task<string> Click(string id)
     {
-        var interactiveElement = _interactiveElements?.Rects.FirstOrDefault(e => e.ElementId == id);
+        var interactiveElement = _interactiveElements?.Data.FirstOrDefault(e => e.Label == id);
 
         if (interactiveElement == null)
         {
@@ -187,7 +187,8 @@ public partial class WebSurferAgent : IAgent
 
         try
         {
-            var target = _page.Locator($"[__elementId='{interactiveElement.ElementId}']");
+            var xPath = interactiveElement.XPath;
+            var target = _page.Locator(xPath);
             await target.ScrollIntoViewIfNeededAsync();
             await target.ClickAsync();
 
@@ -227,10 +228,14 @@ public partial class WebSurferAgent : IAgent
         return $"You searched for {query}";
     }
 
+    /// <summary>
+    /// Type the given text on the interactive element with the given id.
+    /// </summary>
+    /// <param name="id">The id of the interactive element, the label of the element starts with #. e.g. #1</param>
     [Function]
     public async Task<string> Type(string id, string text)
     {
-        var interactiveElement = _interactiveElements!.Rects.FirstOrDefault(e => e.ElementId == id);
+        var interactiveElement = _interactiveElements?.Data.FirstOrDefault(e => e.Label == id);
 
         if (interactiveElement == null)
         {
@@ -239,7 +244,8 @@ public partial class WebSurferAgent : IAgent
 
         try
         {
-            var target = _page.Locator($"[__elementId='{interactiveElement.ElementId}']");
+            var xPath = interactiveElement.XPath;
+            var target = _page.Locator(xPath);
             await target.ScrollIntoViewIfNeededAsync();
             await target.FillAsync(text);
 
@@ -280,7 +286,7 @@ public partial class WebSurferAgent : IAgent
 
     private async Task DrawAllInteractiveElementsAsync()
     {
-        var scriptPath = "page_script.js";
+        var scriptPath = "tag_utils.js";
         var script = File.ReadAllText(scriptPath);
         await _page.EvaluateAsync(script);
 
@@ -288,15 +294,17 @@ public partial class WebSurferAgent : IAgent
         //var initializeScript = File.ReadAllText(initialize_script);
         //await _page.EvaluateAsync(initializeScript);
         await _page.WaitForLoadStateAsync();
+        var objects = await _page.EvaluateAsync("window.tagifyWebpage();");
+        var str = JsonSerializer.Serialize(objects);
+        _interactiveElements = JsonSerializer.Deserialize<TagMetaDatas>(str) ?? throw new Exception("interactiveRects is null");
+        //var interactiveElements = 
+        //var str = JsonSerializer.Serialize(interactiveElements);
+        //_interactiveElements = JsonSerializer.Deserialize<InteractiveRectangles>(str) ?? throw new Exception("interactiveRects is null");
 
-        var interactiveElements = await _page.EvaluateAsync("MultimodalWebSurfer.getInteractiveRects();");
-        var str = JsonSerializer.Serialize(interactiveElements);
-        _interactiveElements = JsonSerializer.Deserialize<InteractiveRectangles>(str) ?? throw new Exception("interactiveRects is null");
-
-        // print all text content
-        foreach (var rect in _interactiveElements.Rects)
-        {
-            Console.WriteLine($"id: {rect.ElementId}, tag: {rect.TagName}, role: {rect.Role}, aria-name: {rect.AriaName}");
-        }
+        //// print all text content
+        //foreach (var rect in _interactiveElements.Rects)
+        //{
+        //    Console.WriteLine($"id: {rect.ElementId}, tag: {rect.TagName}, role: {rect.Role}, aria-name: {rect.AriaName}");
+        //}
     }
 }

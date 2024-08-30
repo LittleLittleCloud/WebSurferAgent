@@ -16,6 +16,6 @@ var aoaiKey = Environment.GetEnvironmentVariable("AZURE_OPENAI_API_KEY") ?? thro
 var openaiClient = new AzureOpenAIClient(new Uri(aoaiEndpoint), new Azure.AzureKeyCredential(aoaiKey));
 var webSurferAgent = new WebSurferAgent(openaiClient.GetChatClient("gpt-4o"), browser);
 var task = """
-    How many issues does AutoGen.Net v0.1.0 milestone have?
+    Find a good first .net issue in Microsoft/AutoGen repository.
     """;
 await webSurferAgent.SendAsync(task);

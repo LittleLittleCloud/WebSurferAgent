@@ -5,6 +5,8 @@ Automate web surfing using GPT-4o and playwright.Net
 > [!Note]
 > This project is modified from the [WebSurferAgent](https://github.com/microsoft/autogen/blob/main/autogen/agentchat/contrib/web_surfer.py).
 > With a few modifications to better follow the dotnet style.
+> The original project is written in python and uses playwright-python.
+> The tag_utils.js is copied from https://github.com/reworkd/tarsier, with little modification to return the list of interactive elements.
 
 ![Web Surfer Agent](./assets/workflow.png)
 
