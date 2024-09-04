@@ -8,10 +8,7 @@ Automate web surfing using GPT-4o and playwright.Net
 > The original project is written in python and uses playwright-python.
 > The tag_utils.js is copied from https://github.com/reworkd/tarsier, with little modification to return the list of interactive elements.
 
-![Web Surfer Agent](./assets/workflow.png)
-
-## Demo
-
+![chat-ui](./assets/chat-ui.png)
 
 ## Getting Started
 
@@ -36,3 +33,6 @@ dotnet pwsh bin/Debug/net8.0/playwright.ps1 install
 ```bash
 dotnet run
 ```
+
+## Workflow
+![Web Surfer Agent](./assets/workflow.png)
