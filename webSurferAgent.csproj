@@ -6,11 +6,9 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlaywrightPlatform>all</PlaywrightPlatform>
+    <AutoGenVersion>0.1.0-nightly-10635437896</AutoGenVersion>
+    <NoWarn>NU1605</NoWarn>
   </PropertyGroup>
-
-  <ItemGroup>
-    <None Remove="tag_utils.js" />
-  </ItemGroup>
 
   <ItemGroup>
     <Content Include="tag_utils.js">
@@ -20,8 +18,10 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Playwright" Version="1.46.0" />
-	  <PackageReference Include="AutoGen.SourceGenerator" Version="0.1.0-nightly-10586308202" />
-	  <PackageReference Include="AutoGen" Version="0.1.0-nightly-10586308202" />
+	  <PackageReference Include="AutoGen.SourceGenerator" Version="$(AutoGenVersion)" />
+	  <PackageReference Include="AutoGen" Version="$(AutoGenVersion)" />
+    <PackageReference Include="ChatRoom.SDK" Version="0.5.2" />
+	  <PackageReference Include="ChatRoom.StaticWebUI" Version="0.5.2" />
   </ItemGroup>
 
 </Project>
