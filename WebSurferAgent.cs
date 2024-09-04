@@ -27,7 +27,7 @@ public partial class WebSurferAgent : IAgent
         DrawAllInteractiveElementsAsync().Wait();
     }
 
-    public WebSurferAgent(ChatClient openaiClient, IBrowser browser, string name = "web-surfur", int maxSteps = 10)
+    public WebSurferAgent(ChatClient openaiClient, IBrowser browser, string name = "web-surfer", int maxSteps = 10)
     {
         var functionCallMiddleware = new FunctionCallMiddleware(
             functions: [
@@ -71,6 +71,10 @@ public partial class WebSurferAgent : IAgent
 
     public async Task<IMessage> GenerateReplyAsync(IEnumerable<IMessage> messages, GenerateReplyOptions? options = null, CancellationToken cancellationToken = default)
     {
+        // to google
+        await _page.GotoAsync("https://www.google.com");
+        await DrawAllInteractiveElementsAsync();
+
         var taskPrompt = """
             summarize the task from chat history.
             """;
